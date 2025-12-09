@@ -1,0 +1,400 @@
+**Docker Services**
+
+* N8n
+* LiveKitServer
+* LiveKitWorker
+* FasterWhisperer
+* VibeVoice-API
+* Postgres
+* PGVector
+* Redis
+* QDRANT
+* MeiliSearch
+* Loki
+* Prometheus
+* Grafana
+* CAdvisor
+* Node-Exporter
+* Vault
+* Traefik
+* MetaMCP
+
+**MetaMCP Embedded Services**
+
+The following 12 services are embedded within MetaMCP:
+
+* DesktopCommander
+* GitHubMCP
+* N8nMCP
+* N8nWorkflowsMCP
+* VaultMCP
+* RedisMCP
+* PostgresMCP
+* QdrantMCP
+* MySearchMCP (MeiliSearch)
+* GrafanaLokiMCP
+* Context7MCP
+* TailscaleMCP
+
+---
+
+# Docker Stack Specification
+
+Repo: THE HOW / infra backbone  
+
+Scope: Containers, roles, and dependencies for SRAS / MetaMCP swarm
+
+## 0. Summary
+
+This file defines the **non-negotiable Docker stack**:
+
+Core categories:
+
+1. Orchestration & voice layer
+2. Data & vector layer
+3. Observability & metrics
+4. Security & edge
+5. MetaMCP + embedded MCP servers
+
+No local LLM containers. All model inference uses the **GLM Coding Plan API** and external LLMs.  
+
+GPU is reserved for **STT/TTS** and future local inference, not clutter.
+
+---
+
+## 1. Container Inventory (Exact Set)
+
+### 1.1 Orchestration & Voice Layer
+
+1. `n8n`  
+
+   - Role: Central nervous system. All workflows, automations, triggers.  
+
+   - Notes: Persistent workflows, webhooks, MetaMCP calls, scheduler jobs.
+
+2. `livekit-server`  
+
+   - Role: SFU / real-time media server (voice rooms, streams).  
+
+   - Notes: Handles audio in/out between you and agents.
+
+3. `livekit-worker`  
+
+   - Role: Background jobs for LiveKit (recording, pipelines, processing).  
+
+   - Notes: Offloads heavy / async tasks from `livekit-server`.
+
+4. `faster-whisper`  
+
+   - Role: **Primary speech-to-text (STT)** service.  
+
+   - Notes: Exposed as HTTP/gRPC. Used by LiveKit & N8N workflows.
+
+5. `vibevoice-api`  
+
+   - Role: **Primary text-to-speech (TTS)**, Microsoft `VibeVoice` wrapper.  
+
+   - Notes: Single source of truth for all outbound synthesized voice.
+
+---
+
+### 1.2 Data / Vector / Search Layer
+
+6. `postgres`  
+
+   - Role: Main relational DB.  
+
+   - Notes: Used by N8N, MetaMCP, and any persistent state.
+
+7. `pgvector` (inside Postgres)  
+
+   - Role: Vector extension for Postgres.  
+
+   - Notes: Not a separate container. Enabled and configured in `postgres`.
+
+8. `redis`  
+
+   - Role: Caching, queues, ephemeral state.  
+
+   - Notes: Used by N8N, MetaMCP, task queues, rate-limiters.
+
+9. `qdrant`  
+
+   - Role: High-performance vector DB for embeddings.  
+
+   - Notes: Long-term semantic memory & retrieval for swarm agents.
+
+10. `meilisearch` (your "MySearch")  
+
+    - Role: Full-text search, fast fuzzy search over docs/events.  
+
+    - Notes: Indexes logs, configs, docs, transcripts as needed.
+
+11. `loki`  
+
+    - Role: Log aggregation.  
+
+    - Notes: Every container sends logs here; Grafana queries Loki.
+
+---
+
+### 1.3 Observability & Metrics
+
+12. `prometheus`  
+
+    - Role: Metrics scraping and time series storage.  
+
+    - Notes: Scrapes `node-exporter`, `cadvisor`, app metrics, etc.
+
+13. `grafana`  
+
+    - Role: Dashboards & visualization.  
+
+    - Notes: Reads from Prometheus & Loki; your MRI machine for the system.
+
+14. `cadvisor`  
+
+    - Role: Per-container resource monitoring.  
+
+    - Notes: Container CPU, mem, I/O, for Prometheus dashboards.
+
+15. `node-exporter`  
+
+    - Role: Host-level metrics.  
+
+    - Notes: OS metrics for Prometheus (CPU, disk, RAM, etc.).
+
+---
+
+### 1.4 Security / Edge / Routing
+
+16. `vault` (HashiCorp Vault – your "Bolt")  
+
+    - Role: Secrets management.  
+
+    - Notes: All API keys, DB creds, Tailscale auth, etc. live here.  
+
+    - Policy: No hardcoded secrets in `docker-compose` or source.
+
+17. `traefik` (your "Trafic")  
+
+    - Role: Edge router / reverse proxy.  
+
+    - Notes: Handles HTTP/S, TLS, routing to N8N, MetaMCP, LiveKit, etc.
+
+---
+
+### 1.5 MetaMCP Layer
+
+18. `metamcp`  
+
+    - Role: MCP aggregator / router.  
+
+    - Notes: Single endpoint that fans out to all embedded MCP servers.
+
+#### 1.5.1 Embedded MCP Servers (inside MetaMCP)
+
+These are **logical MCP endpoints**, not separate containers.  
+
+They run behind MetaMCP and must be configured exactly as listed:
+
+1. `DesktopCommanderMCP`
+
+2. `GitHubMCP`
+
+3. `N8nMCP`
+
+4. `N8nWorkflowsMCP`
+
+5. `VaultMCP`
+
+6. `RedisMCP`
+
+7. `PostgresMCP`
+
+8. `QdrantMCP`
+
+9. `MySearchMCP` (MeiliSearch)
+
+10. `GrafanaLokiMCP` (2-in-1)
+
+11. `Context7MCP`
+
+12. `TailscaleMCP`
+
+> Rule: **Only these 12** are considered "core" in MetaMCP for this stack.  
+
+> Any additional MCP servers are "experimental" and documented elsewhere.
+
+---
+
+## 2. Networks
+
+All containers share a primary Docker network:
+
+- `sras_net`
+
+  - Type: `bridge`
+
+  - Purpose: Internal VPC for SRAS/MetaMCP stack.
+
+Optional additional networks:
+
+- `edge_net`  
+
+  - Traefik + public-facing services only.
+
+- `observability_net`  
+
+  - Prometheus + Grafana + Loki + exporters (can reuse `sras_net` if you're lazy).
+
+---
+
+## 3. Volumes
+
+Non-negotiable persistent volumes:
+
+- `n8n_data` → `n8n` app data & workflows
+- `livekit_config` → LiveKit config, credentials, room mappings
+- `fasterwhisper_models` → Faster-Whisper model weights
+- `vibevoice_models` → VibeVoice weights / cache
+- `postgres_data` → Postgres data directory
+- `redis_data` (optional) → Redis persistence if needed
+- `qdrant_data` → Qdrant DB files
+- `meilisearch_data` → MeiliSearch indexes
+- `loki_data` → Loki chunks
+- `prometheus_data` → Prometheus TSDB
+- `grafana_data` → Grafana dashboards & config
+- `vault_data` → Vault storage backend
+- `traefik_config` → Traefik dynamic/static configs & certs
+- `metamcp_config` → MetaMCP server configs
+- `metamcp_logs` → MetaMCP logs for Loki shipping if mounted
+
+---
+
+## 4. Boot Order & Dependency Notes
+
+This is how the swarm comes alive without tripping over its own feet.
+
+1. **Base infra & security**
+
+   - `postgres`
+
+   - `redis`
+
+   - `qdrant`
+
+   - `meilisearch`
+
+   - `vault`
+
+   - `traefik`
+
+2. **Observability layer**
+
+   - `loki`
+
+   - `prometheus`
+
+   - `cadvisor`
+
+   - `node-exporter`
+
+   - `grafana`
+
+3. **Voice & media layer**
+
+   - `livekit-server`
+
+   - `livekit-worker`
+
+   - `faster-whisper`
+
+   - `vibevoice-api`
+
+4. **Automation & MCP**
+
+   - `n8n`
+
+   - `metamcp` (with all 12 embedded MCP servers configured)
+
+---
+
+## 5. Environment & Secrets
+
+All containers read from **Vault + `.env`** (local dev only):
+
+- `.env` (dev)
+
+  - DB connection strings
+
+  - Dev-only API tokens
+
+  - Local ports & hostnames
+
+- `Vault`
+
+  - Production secrets
+
+  - LLM keys (GLM, etc.)
+
+  - Tailscale auth keys
+
+  - Any credential used by MCPs
+
+Rule:
+
+- Local: `.env` is allowed but never committed with real secrets.
+
+- Prod: Vault only. Compose reads via Vault injection templates or sidecars.
+
+---
+
+## 6. Non-Negotiable Constraints
+
+- **No Ollama container** in this stack. Models are remote. GPU is for STT/TTS.  
+
+- STT/TTS containers (`faster-whisper`, `vibevoice-api`) are **always-on**, not "ephemeral per-session BS".  
+
+- MetaMCP only exposes the **12 core MCP servers** listed here. Everything else is secondary.  
+
+- Every service must emit logs to `stdout` in structured format → scraped by `loki`.  
+
+- Every service that matters exposes metrics → scraped by `prometheus`.
+
+---
+
+## 7. Quick-Start Checklist
+
+Before any `docker compose up`:
+
+- [ ] Docker Desktop installed with WSL2 integration and GPU runtime enabled  
+
+- [ ] `sras_net` created (or auto-created by compose)  
+
+- [ ] All volumes defined in `docker-compose.yml`  
+
+- [ ] `.env` (dev) created with placeholder secrets  
+
+- [ ] Vault initialized & unsealed (for prod)  
+
+- [ ] Traefik entrypoints and hostnames defined  
+
+- [ ] MetaMCP config knows how to reach:
+
+  - N8N
+
+  - LiveKit
+
+  - Redis/Postgres/Qdrant/Meilisearch
+
+  - Grafana/Loki
+
+  - Vault
+
+  - Tailscale (MCP-level, not necessarily containerized)
+
+When this doc and `docker-compose.yml` disagree,  
+
+**this document wins.**
+

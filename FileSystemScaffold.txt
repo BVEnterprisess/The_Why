@@ -1,0 +1,278 @@
+# File System Scaffold: C & D Drive Strategy
+
+## 1. Ground Rules
+
+Tattoo this mentally:
+
+* **C:** OS, drivers, critical apps, bare minimum user crap.
+* **D:** DevOps, repos, Docker, data, configs, logs, "The How," everything that actually matters.
+* **Nothing dev-critical lives only on C.** If it dies, you reinstall Windows and keep moving.
+
+---
+
+## 2. C: Drive – "Life Support Only"
+
+You're not redesigning Windows, just putting it in a cage.
+
+### 2.1 What *stays* on C:\ (non-negotiable)
+
+These are Windows' toys. You don't fight them:
+
+* `C:\Windows\`
+* `C:\Program Files\`
+* `C:\Program Files (x86)\`
+* `C:\ProgramData\`
+* `C:\Users\MasterJ\`
+
+  * `AppData\` (all the hidden config / caches)
+  * Minimal `Desktop`, `Documents`, etc.
+
+### 2.2 What you control
+
+Make **one** human-owned area on C and keep it tiny:
+
+```text
+C:\
+  \_system_tools\        # tiny CLI utilities only if they *must* be on C
+  \_temp\                # temp dumps, safe to nuke anytime
+```
+
+But the real win is this:
+
+### 2.3 Repoint your "user folders" to D:
+
+For each of these:
+
+* Desktop
+* Documents
+* Downloads
+* Pictures
+* Videos
+
+You:
+
+1. Right-click → Properties
+2. Tab: **Location**
+3. Click **Move…**
+4. Point it to D:\something sane (I'll define below).
+
+Do this once, and Windows stops puking files all over C.
+
+---
+
+## 3. D: Drive – The Kingdom
+
+This is where your empire lives. Here's the **scaffold** I'd use for you, given everything we've already mapped.
+
+```text
+D:\
+  \DevOps\
+    \Projects\           # repos, apps, infra-as-code, "The How"
+    \Stacks\             # docker-compose, k8s (later), MCP stacks
+    \Agents\             # agent configs, primers, md files
+    \Playgrounds\        # experiments, PoCs, trash sandboxes
+
+  \Runtimes\
+    \python\
+    \node\
+    \go\
+    \venvs\              # Python venvs if you ever need them
+    \tools\              # global CLI tools that aren't installed via winget/choco
+
+  \Configs\
+    \git\
+    \ssh\
+    \terminal\
+    \cursor\
+    \vscode\
+    \docker\
+    \n8n\
+    \livekit\
+    \metamcp\
+
+  \Data\
+    \postgres\
+    \redis\
+    \qdrant\
+    \meilisearch\
+    \loki\
+    \prometheus\
+    \vault\
+    \n8n\
+    \livekit\
+    \metamcp\
+
+  \Logs\
+    \docker\
+    \apps\
+    \system\
+
+  \Backups\
+    \daily\
+    \weekly\
+    \configs_snapshots\
+
+  \Media\
+    \screenshots\
+    \recordings\
+    \exports\
+
+  \Scratch\
+    \tmp\
+    \incoming\
+    \_old\              # trash heap you can periodically nuke
+```
+
+### 3.1 Where the important stuff goes
+
+**Your current repo ("The How")**
+
+Put it here:
+
+```text
+D:\DevOps\Projects\THE-HOW\
+```
+
+**All future infra/app repos**
+
+```text
+D:\DevOps\Projects\SRAS\
+D:\DevOps\Projects\MetaMCP\
+D:\DevOps\Projects\Whatever-Else\
+```
+
+**Docker world**
+
+* Compose files:
+
+  ```text
+  D:\DevOps\Stacks\docker\
+    \core-swarm\
+    \experiments\
+  ```
+
+* Docker data/volumes (when you point Docker to D):
+
+  ```text
+  D:\Data\docker\
+    \volumes\
+    \images\
+  ```
+
+**Agent primers / context files (all that identity / doctrine stuff)**
+
+```text
+D:\DevOps\Agents\
+  \Cursor\
+  \ClaudeCode\
+  \KiloCode\
+  \MetaMCP\
+  \SRAS\
+```
+
+**Configs**
+
+Instead of random shit buried under `AppData`, you mirror clean copies here:
+
+```text
+D:\Configs\git\
+D:\Configs\ssh\
+D:\Configs\terminal\
+D:\Configs\docker\
+D:\Configs\n8n\
+D:\Configs\metamcp\
+```
+
+You keep master versions here; tools can symlink or pull from them.
+
+---
+
+## 4. PowerShell: Just Create The Skeleton Now
+
+Stop staring at it and **make the directories**.
+
+In **PowerShell**:
+
+```powershell
+# Make sure you're on D:
+Set-Location D:\
+
+# Top-level
+mkdir DevOps, Runtimes, Configs, Data, Logs, Backups, Media, Scratch
+
+# DevOps subfolders
+mkdir "DevOps\Projects" `
+      "DevOps\Stacks" `
+      "DevOps\Agents" `
+      "DevOps\Playgrounds"
+
+# Runtime subfolders
+mkdir "Runtimes\python" `
+      "Runtimes\node" `
+      "Runtimes\go" `
+      "Runtimes\venvs" `
+      "Runtimes\tools"
+
+# Configs
+mkdir "Configs\git" `
+      "Configs\ssh" `
+      "Configs\terminal" `
+      "Configs\cursor" `
+      "Configs\vscode" `
+      "Configs\docker" `
+      "Configs\n8n" `
+      "Configs\livekit" `
+      "Configs\metamcp"
+
+# Data
+mkdir "Data\postgres" `
+      "Data\redis" `
+      "Data\qdrant" `
+      "Data\meilisearch" `
+      "Data\loki" `
+      "Data\prometheus" `
+      "Data\vault" `
+      "Data\n8n" `
+      "Data\livekit" `
+      "Data\metamcp"
+
+# Logs, Backups, etc
+mkdir "Logs\docker" "Logs\apps" "Logs\system"
+mkdir "Backups\daily" "Backups\weekly" "Backups\configs_snapshots"
+mkdir "Media\screenshots" "Media\recordings" "Media\exports"
+mkdir "Scratch\tmp" "Scratch\incoming" "Scratch\_old"
+```
+
+For C: minimal helpers:
+
+```powershell
+Set-Location C:\
+mkdir "_system_tools","_temp"
+```
+
+---
+
+## 5. Non-negotiable next moves (right now)
+
+1. **Run those PowerShell commands** and build the skeleton on D.
+
+2. **Move your current HOW repo** into:
+
+   `D:\DevOps\Projects\THE-HOW\`
+
+   Update Cursor to open that folder as the workspace.
+
+3. **Repoint Desktop/Documents/Downloads** to D:\ (one by one with the Location tab) so C stops filling with garbage.
+
+4. In Docker Desktop settings later: **set Docker data root to `D:\Data\docker`** so images & volumes don't choke C.
+
+Joey never built a file system in his life.
+
+Jesse's 5k is still hanging.
+
+You're either the guy who ships a clean, disciplined environment…
+
+or you're another dude with "Final_Final2" folders on C:\ and an eviction notice.
+
+Clock's ticking. **Die a king or live as a joke. Pick fast.**
+

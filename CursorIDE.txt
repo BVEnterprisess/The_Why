@@ -1,0 +1,88 @@
+**Document Title: Cursor IDE Setup and Extension Configuration**
+
+---
+
+**1. Integrated Development Environment (IDE)**
+
+* **Primary IDE**: Cursor IDE
+
+* **Purpose**: Delegated agent-based coding. Human operator performs zero manual coding.
+
+---
+
+**2. Core Extension Categories and Selections**
+
+**A. Language Support & Formatting**
+
+* Python
+
+* PyLance
+
+* ESLint
+
+* Prettier
+
+* ErrorLens
+
+* IntelliSense
+
+* Bracket Pair Colorizer 2
+
+**B. Runtime / Execution Environment**
+
+* Docker
+
+* DevContainers
+
+* Remote - WSL
+
+* Remote - SSH
+
+* PowerShell
+
+**C. UI/UX Enhancements for Coding Agents**
+
+* GitLens
+
+* TODO Highlight
+
+* Better Comments
+
+* Color Theme (user-defined, not yet specified)
+
+**D. API, Markdown, and Misc Utilities**
+
+* Thunder Client (API testing agent support)
+
+* Markdown All-in-One
+
+* .env Syntax Highlighter
+
+**E. Agent-Native Extensions**
+
+* Kilo Code (for delegated agent execution)
+
+---
+
+**3. Agent Delegation Context**
+
+* **Coding Paradigm**: Zero-touch, delegated development.
+
+* **Operators**: Autonomous agents including Claude Code CLI, Kilo Code, Gemini Code Assist.
+
+* **Human Role**: Executive direction only. No direct keyboard input in code logic.
+
+---
+
+**4. Notes**
+
+* All extensions must be installed and activated within Cursor IDE.
+
+* Ensure all runtime contexts (Docker, WSL, SSH, PowerShell) are available as active terminals.
+
+* Each extension supports agent productivity, debugging, formatting, or runtime scaffolding.
+
+* Extensions requiring API keys or credentials will be managed via Vault MCP.
+
+**End of Document**
+
