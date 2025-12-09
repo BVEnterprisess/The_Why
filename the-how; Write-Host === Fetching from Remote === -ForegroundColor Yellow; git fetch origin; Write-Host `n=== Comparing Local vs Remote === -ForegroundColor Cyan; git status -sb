@@ -1,5 +1,0 @@
-[33mbdd8174[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m feat: Add comprehensive IDE configuration for DevOps best practices
-[33me296f48[m docs: Add CI/CD workflow documentation
-[33m04cbc45[m feat: Add CI/CD workflows for automated sync, validation, and deployment
-[33mb4b35c3[m Migrate all project files from old location
-[33md8e869d[m Add sync script for remote repository
