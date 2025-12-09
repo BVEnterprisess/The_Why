@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+.git/
+.vscode/
+.venv/
+__pycache__/
+*.min.js
+package-lock.json
+yarn.lock
+
