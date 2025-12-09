@@ -1,0 +1,62 @@
+name: Auto Sync - Pull and Merge
+
+on:
+  schedule:
+    # Run every 6 hours to check for remote changes
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    # Allow manual trigger
+
+jobs:
+  sync:
+    name: Sync with Remote
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+      
+      - name: Fetch all branches
+        run: |
+          git fetch origin
+          git fetch --all
+      
+      - name: Check for remote changes
+        id: check_changes
+        run: |
+          git fetch origin main
+          LOCAL=$(git rev-parse HEAD)
+          REMOTE=$(git rev-parse origin/main)
+          
+          if [ "$LOCAL" != "$REMOTE" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "⚠ Remote has changes, will pull and merge"
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "✓ Repository is up to date"
+          fi
+      
+      - name: Pull and merge remote changes
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          echo "Pulling changes from remote..."
+          git pull origin main --no-rebase || {
+            echo "⚠ Merge conflict detected, manual intervention needed"
+            exit 1
+          }
+          echo "✓ Successfully pulled and merged"
+      
+      - name: Push merged changes
+        if: steps.check_changes.outputs.has_changes == 'true'
+        run: |
+          git push origin main
+          echo "✓ Changes pushed to remote"
+

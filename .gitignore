@@ -1,0 +1,53 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.bak
+*.backup
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Secrets (never commit)
+secrets/
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Build artifacts
+dist/
+build/
+*.exe
+*.dll
+
+# Node (if used)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python (if used)
+__pycache__/
+*.py[cod]
+*.pyc
+venv/
+env/
+
+# Local overrides
+local/
+.local/
+

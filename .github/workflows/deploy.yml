@@ -1,0 +1,48 @@
+name: Deploy Documentation
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '*.md'
+      - '*.txt'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+jobs:
+  deploy-docs:
+    name: Deploy Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Validate documentation
+        run: |
+          echo "Validating documentation files..."
+          for file in *.md *.txt; do
+            if [ -f "$file" ]; then
+              echo "✓ Found: $file"
+            fi
+          done
+      
+      - name: Create documentation summary
+        run: |
+          echo "# Documentation Summary" > docs-summary.md
+          echo "" >> docs-summary.md
+          echo "Generated: $(date)" >> docs-summary.md
+          echo "" >> docs-summary.md
+          echo "## Files" >> docs-summary.md
+          ls -lh *.md *.txt 2>/dev/null | awk '{print "- " $9 " (" $5 ")"}' >> docs-summary.md
+          cat docs-summary.md
+      
+      - name: Upload documentation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: |
+            *.md
+            *.txt
+          retention-days: 30
+

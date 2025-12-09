@@ -1,0 +1,40 @@
+name: Auto Merge Dependabot PRs
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  auto-merge:
+    name: Auto Merge
+    runs-on: ubuntu-latest
+    if: github.actor == 'dependabot[bot]' || contains(github.event.pull_request.labels.*.name, 'auto-merge')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Auto-merge PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            
+            // Only auto-merge if PR is from dependabot or has auto-merge label
+            if (pr.user.login === 'dependabot[bot]' || 
+                pr.labels.some(label => label.name === 'auto-merge')) {
+              await github.rest.pulls.merge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+                merge_method: 'squash',
+              });
+              console.log('✓ PR auto-merged');
+            } else {
+              console.log('⏭ Skipping auto-merge (not eligible)');
+            }
+

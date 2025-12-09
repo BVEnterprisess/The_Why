@@ -1,0 +1,67 @@
+name: CI - Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  validate:
+    name: Validate Files
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Validate Markdown files
+        run: |
+          echo "Checking for required documentation files..."
+          test -f FileSystemArchitecture.md || exit 1
+          test -f Architecture.txt || exit 1
+          test -f Docker.txt || exit 1
+          echo "✓ All required files present"
+      
+      - name: Check file structure
+        run: |
+          echo "Validating file structure..."
+          if [ ! -d ".github/workflows" ]; then
+            echo "❌ .github/workflows directory missing"
+            exit 1
+          fi
+          echo "✓ File structure valid"
+      
+      - name: Lint markdown (if files exist)
+        run: |
+          if command -v markdownlint &> /dev/null; then
+            markdownlint *.md 2>/dev/null || true
+          else
+            echo "Markdown linting skipped (markdownlint not installed)"
+          fi
+
+  sync-check:
+    name: Sync Status Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Check sync status
+        run: |
+          echo "Checking repository sync status..."
+          git fetch origin
+          LOCAL=$(git rev-parse HEAD)
+          REMOTE=$(git rev-parse origin/main)
+          
+          if [ "$LOCAL" != "$REMOTE" ]; then
+            echo "⚠ Local and remote are out of sync"
+            echo "Local: $LOCAL"
+            echo "Remote: $REMOTE"
+          else
+            echo "✓ Repository is in sync"
+          fi
+

@@ -1,0 +1,38 @@
+name: Enforce Branch Protection
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  enforce-protection:
+    name: Enforce Branch Protection Rules
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Verify commit message format
+        run: |
+          COMMIT_MSG=$(git log -1 --pretty=%B)
+          if [[ ! "$COMMIT_MSG" =~ ^(feat|fix|docs|style|refactor|test|chore)(\(.+\))?: ]]; then
+            echo "⚠ Commit message should follow conventional format: type(scope): description"
+            echo "Current: $COMMIT_MSG"
+            # Don't fail, just warn
+          else
+            echo "✓ Commit message format valid"
+          fi
+      
+      - name: Check for large files
+        run: |
+          echo "Checking for large files (>10MB)..."
+          LARGE_FILES=$(find . -type f -size +10M -not -path './.git/*' | head -5)
+          if [ -n "$LARGE_FILES" ]; then
+            echo "⚠ Large files detected:"
+            echo "$LARGE_FILES"
+            echo "Consider using Git LFS for large files"
+          else
+            echo "✓ No large files detected"
+          fi
+
