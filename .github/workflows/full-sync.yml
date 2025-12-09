@@ -1,0 +1,120 @@
+name: Full Sync - Pull, Merge, Commit, Push
+
+on:
+  schedule:
+    # Run every hour to keep in sync
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      commit_message:
+        description: 'Custom commit message'
+        required: false
+        default: 'Auto-sync: Update from local changes'
+  push:
+    branches: [ main ]
+
+jobs:
+  full-sync:
+    name: Full Repository Sync
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git config pull.rebase false
+          git config merge.allowUnrelatedHistories true
+      
+      - name: Fetch all branches and tags
+        run: |
+          git fetch origin
+          git fetch --all --prune
+          echo "✓ Fetched all branches"
+      
+      - name: Check for remote changes
+        id: check_remote
+        run: |
+          git fetch origin main
+          LOCAL=$(git rev-parse HEAD)
+          REMOTE=$(git rev-parse origin/main 2>/dev/null || echo "none")
+          
+          if [ "$LOCAL" != "$REMOTE" ] && [ "$REMOTE" != "none" ]; then
+            echo "has_remote_changes=true" >> $GITHUB_OUTPUT
+            echo "⚠ Remote has changes (Local: $LOCAL, Remote: $REMOTE)"
+          else
+            echo "has_remote_changes=false" >> $GITHUB_OUTPUT
+            echo "✓ No remote changes"
+          fi
+      
+      - name: Pull and merge remote changes
+        if: steps.check_remote.outputs.has_remote_changes == 'true'
+        run: |
+          echo "Pulling changes from remote..."
+          git pull origin main --no-edit || {
+            echo "⚠ Merge conflict detected"
+            git status
+            exit 1
+          }
+          echo "✓ Successfully merged remote changes"
+      
+      - name: Check for local changes
+        id: check_local
+        run: |
+          git status --porcelain
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "has_local_changes=true" >> $GITHUB_OUTPUT
+            echo "⚠ Local changes detected"
+            git status
+          else
+            echo "has_local_changes=false" >> $GITHUB_OUTPUT
+            echo "✓ No local changes"
+          fi
+      
+      - name: Commit local changes
+        if: steps.check_local.outputs.has_local_changes == 'true'
+        run: |
+          git add .
+          COMMIT_MSG="${{ github.event.inputs.commit_message }}"
+          if [ -z "$COMMIT_MSG" ]; then
+            COMMIT_MSG="chore: Auto-sync repository changes"
+          fi
+          git commit -m "$COMMIT_MSG" || {
+            echo "⚠ Nothing to commit"
+            exit 0
+          }
+          echo "✓ Committed local changes"
+      
+      - name: Push all changes
+        run: |
+          echo "Pushing to remote..."
+          git push origin main || {
+            echo "⚠ Push failed, trying with force (if safe)..."
+            # Only force if we're ahead (not diverged)
+            AHEAD=$(git rev-list --count origin/main..HEAD 2>/dev/null || echo "0")
+            if [ "$AHEAD" -gt 0 ]; then
+              echo "Local is ahead, pushing normally"
+              git push origin main
+            else
+              echo "⚠ Cannot push - branches may have diverged"
+              exit 1
+            fi
+          }
+          echo "✓ Successfully pushed to remote"
+      
+      - name: Summary
+        run: |
+          echo "## Sync Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Remote changes: ${{ steps.check_remote.outputs.has_remote_changes }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Local changes: ${{ steps.check_local.outputs.has_local_changes }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Final status: Synced" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Repository is now in sync!" >> $GITHUB_STEP_SUMMARY
+
